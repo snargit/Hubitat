@@ -24,7 +24,7 @@ Note: the string must be defined as one single line (https://www.webtoolkitonlin
 @Field String VD_JSON = '{"Shade:Bedroom":{"close":"< B0 String that closes the Shade >","open":"< B0 String that opens the Shade >","stop":"< B0 String to stop the Shade >"},"Switch:Radio":{"on":"< B0 String turn on the Switch >","off":"< B0 String turn off the Switch >"}}'
 
 metadata {
-  definition (name: "Sonoff RF Bridge", namespace: "snargit", author: "David BAILEY", importUrl: "https://raw.githubusercontent.com/syepes/Hubitat/master/Drivers/Sonoff/Sonoff%20RF%20Bridge.groovy") {
+  definition (name: "Sonoff RF Bridge", namespace: "snargit", author: "David BAILEY", importUrl: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT.groovy") {
     capability "Actuator"
     capability "Refresh"
     capability "Initialize"
