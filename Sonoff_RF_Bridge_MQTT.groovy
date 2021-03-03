@@ -1,7 +1,7 @@
 import groovy.json.JsonSlurper
 import groovy.transform.Field
 
-@Field String VERSION = "1.0.3"
+@Field String VERSION = "1.0.0"
 
 @Field List<String> LOG_LEVELS = ["error", "warn", "info", "debug", "trace"]
 @Field String DEFAULT_LOG_LEVEL = LOG_LEVELS[2]
@@ -45,7 +45,7 @@ metadata {
         input name: "MQTTBroker", type: "text", title: "MQTT Broker Address:", required: true, displayDuringSetup: true
         input name: "username", type: "text", title: "MQTT Username:", description: "(blank if none)", required: false, displayDuringSetup: true
         input name: "password", type: "password", title: "MQTT Password:", description: "(blank if none)", required: false, displayDuringSetup: true
-        input name: "topicPub", type: "text", title: "Topic to Publish:", description: "Topic Value (topic/device/value)", required: false, displayDuringSetup: true
+        input name: "tasmotaDeviceName", type: "text", title: "Tasmota Device Topic:", description: "The topic set in the MQTT Tasmota configuration", required: true, displayDuringSetup: true
     }
   }
 }
@@ -65,7 +65,11 @@ def installed() {
 }
 
 def uninstalled() {
-    interfaces.mqtt.disconnect()
+    if (interfaces.mqtt.isConnected()) {
+        interfaces.mqtt.unsubscribe("tele/${tasmotaDeviceName}")
+        interfaces.mqtt.unsubscribe("stat/${tasmotaDeviceName}")
+        interfaces.mqtt.disconnect()
+    }
 }
 
 def initialize() {
@@ -80,8 +84,16 @@ def initialize() {
     logger("info", "configure() - Creating Virtual Device: ${it.key?.split(':')?.getAt(1)} (${it.key?.split(':')?.getAt(0)})")
     def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1))
   }
-
-  interfaces.mqtt.connect()
+  try {
+      interfaces.mqtt.connect(mqttbroker, "HubitatSonoffRFBridge", settings?.username,settings?.password)
+      pauseExecution(1000)
+      if (interfaces.mqtt.isConnected()) {
+          interfaces.mqtt.subscribe("tele/${tasmotaDeviceName}")
+          interfaces.mqtt.subscribe("stat/${tasmotaDeviceName}")
+      }
+  } catch (e) {
+      logger("error", "Initialize error ${e.message}")
+  }
 }
 
 def updated() {
@@ -160,30 +172,38 @@ def checkState() {
   return cmds
 }
 
-def parse(String description) {
-  logger("trace", "parse() - description: ${description?.inspect()}")
-  def result = []
+//def parse(String description) {
+//  logger("trace", "parse() - description: ${description?.inspect()}")
+//  def result = []
+//
+//  def descMap = parseDescriptionAsMap(description)
+//
+//  if (!descMap?.isEmpty()) {
+//    if (descMap["body"]?.containsKey("StatusSTS")) {
+//      if (descMap["body"].StatusSTS?.UptimeSec > 0) {
+//        deviceUpdate()
+//      } else {
+//        if (device.currentValue('status') != 'offline') {
+//          result << createEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
+//        }
+//      }
+//    }
+//
+//    if (descMap["body"]?.containsKey("StatusFWR")) {
+//      state.deviceInfo = descMap["body"].StatusFWR
+//    }
+//  }
+//
+//  logger("debug", "parse() - descMap: ${descMap?.inspect()} with result: ${result?.inspect()}")
+//  result
+//}
 
-  def descMap = parseDescriptionAsMap(description)
+def parse(String description)
+{
+    def parsedData = interfaces.mqtt.parseMessage(description)
+    if (!parsedData?.isEmpty()) {
 
-  if (!descMap?.isEmpty()) {
-    if (descMap["body"]?.containsKey("StatusSTS")) {
-      if (descMap["body"].StatusSTS?.UptimeSec > 0) {
-        deviceUpdate()
-      } else {
-        if (device.currentValue('status') != 'offline') {
-          result << createEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
-        }
-      }
     }
-
-    if (descMap["body"]?.containsKey("StatusFWR")) {
-      state.deviceInfo = descMap["body"].StatusFWR
-    }
-  }
-
-  logger("debug", "parse() - descMap: ${descMap?.inspect()} with result: ${result?.inspect()}")
-  result
 }
 
 def deviceUpdate() {
@@ -461,59 +481,33 @@ private parseDescriptionAsMap(description) {
 }
 
 // Synchronous call
-private getActionNow(uri) {
-  logger("debug", "getActionNow() - uri: ${uri.inspect()}")
-
-  try {
-    httpGet(["uri": "http://${deviceAddress}" + uri, "contentType": "application/json; charset=utf-8"]) { resp ->
-      logger("debug", "getActionNow() - respStatus: ${resp.getStatus()}, respHeaders: ${resp.getAllHeaders()?.inspect()}, respData: ${resp.getData()}")
-      if (resp.success && resp?.getData()?.isEmpty()) {
-        return true
-      } else {
-        logger("error", "getActionNow() - respStatus: ${resp.getStatus()}, respHeaders: ${resp.getAllHeaders()?.inspect()}, respData: ${resp.getData()}")
-        return false
-      }
-    }
-  } catch (Exception e) {
-    logger("error", "getActionNow() - e: ${e.inspect()}")
-  }
+//private getActionNow(uri) {
+//  logger("debug", "getActionNow() - uri: ${uri.inspect()}")
+//
+//  try {
+//    httpGet(["uri": "http://${deviceAddress}" + uri, "contentType": "application/json; charset=utf-8"]) { resp ->
+//      logger("debug", "getActionNow() - respStatus: ${resp.getStatus()}, respHeaders: ${resp.getAllHeaders()?.inspect()}, respData: ${resp.getData()}")
+//      if (resp.success && resp?.getData()?.isEmpty()) {
+//        return true
+//      } else {
+//        logger("error", "getActionNow() - respStatus: ${resp.getStatus()}, respHeaders: ${resp.getAllHeaders()?.inspect()}, respData: ${resp.getData()}")
+//        return false
+//      }
+//    }
+//  } catch (Exception e) {
+//    logger("error", "getActionNow() - e: ${e.inspect()}")
+//  }
+//}
+//
+private mqttPublish(topic, value)
+{
+    interfaces.mqtt.publish(topic, value)
 }
 
-// Asynchronous call
-private getAction(uri) {
-  def headers = getHeader()
-  def hubAction = new hubitat.device.HubAction(method: "GET", path: uri, headers: headers)
-  return hubAction
-}
-
-private def getCommand(command, value=null) {
-  String uri = "/cm?"
-  if (deviceAuthUsr != null && deviceAuthPwd != null) {
-    uri += "user=${deviceAuthUsr}&password=${deviceAuthPwd}&"
-  }
-  if (value) {
-    uri += "cmnd=${command}%20${value}"
-  } else {
-    uri += "cmnd=${command}"
-  }
-  return uri
-}
-
-private String urlEscape(url) {
-  return(URLEncoder.encode(url).replace("+", "%20"))
-}
-
-private getHeader() {
-  def headers = [:]
-  headers.put("Host", deviceAddress)
-  headers.put("Content-Type", "application/x-www-form-urlencoded")
-
-  if (deviceAuthUsr != null && deviceAuthPwd != null) {
-    String auth = "Basic " + "${username}:${password}".bytes.encodeBase64().toString()
-    headers.put("Authorization", auth)
-  }
-
-  return headers
+private mqttGetCommandTopic(command)
+{
+    String cmd = "cmnd/+${tasmotaDeviceName}/${command}"
+    return cmd
 }
 
 /**
@@ -534,7 +528,7 @@ private logger(level, msg) {
 }
 
 def updateCheck() {
-  Map params = [uri: "https://raw.githubusercontent.com/syepes/Hubitat/master/Drivers/Sonoff/Sonoff%20RF%20Bridge.groovy"]
+  Map params = [uri: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT.groovy"]
   asynchttpGet("updateCheckHandler", params)
 }
 
