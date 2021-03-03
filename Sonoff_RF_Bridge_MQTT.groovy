@@ -88,8 +88,8 @@ def initialize() {
       interfaces.mqtt.connect(mqttbroker, "HubitatSonoffRFBridge", settings?.username,settings?.password)
       pauseExecution(1000)
       if (interfaces.mqtt.isConnected()) {
-          interfaces.mqtt.subscribe("tele/${tasmotaDeviceName}")
-          interfaces.mqtt.subscribe("stat/${tasmotaDeviceName}")
+          interfaces.mqtt.subscribe("tele/${tasmotaDeviceName}/#")
+          interfaces.mqtt.subscribe("stat/${tasmotaDeviceName}/#")
       }
   } catch (e) {
       logger("error", "Initialize error ${e.message}")
@@ -157,7 +157,6 @@ def clearState() {
 
 def checkState() {
   logger("debug", "checkState()")
-  def cmds = []
 
   if (state?.devicePings >= 4) {
     if (device.currentValue('status') != 'offline') {
@@ -168,8 +167,7 @@ def checkState() {
 
   state.devicePings = state.devicePings + 1
 
-  cmds << getAction(getCommand("Status", 11))
-  return cmds
+  mqttPublish(mqttGetCommandTopic("Status"), 11)
 }
 
 //def parse(String description) {
@@ -200,10 +198,27 @@ def checkState() {
 
 def parse(String description)
 {
+    def result []
     def parsedData = interfaces.mqtt.parseMessage(description)
     if (!parsedData?.isEmpty()) {
-
+        topic = parsedData.topic
+        topic = topic.substring(topic.lastIndexOf("/")+1)
+        switch (topic)
+        {
+            case "RESULT":
+                mqttRESULT(topic.payload)
+                break
+            case "STATUS2":
+                mqttSTATUS2(topic.payload)
+                break
+            case "STATUS11":
+                result << mqttSTATUS11(topic.payload)
+                break
+            default:
+                logger("info", payload)
+        }
     }
+    return result
 }
 
 def deviceUpdate() {
@@ -217,16 +232,44 @@ def deviceUpdate() {
   state.devicePings = 0
   logger("info", "Device is online")
 
-  sendEvent(deviceState)
+  return createEvent(deviceState)
 }
 
 def getDeviceInfo() {
   logger("debug", "getDeviceInfo()")
-  def cmds = []
-
-  cmds << getAction(getCommand("Status", 2))
-  return cmds
+  mqttPublish(mqttGetCommandTopic("Status"), 0))
 }
+
+private def mqttRESULT(String value)
+{
+    def slurper = new JsonSlurper()
+    def parsedData = slurper.parseText(value)
+}
+
+private def mqttSTATUS2(String value)
+{
+    def result []
+    def slurper = new JsonSlurper().setType(JsonParserType.INDEX_OVERLAY)
+    def parsedData = slurper.parseText(value)
+    state.deviceInfo = parsedData?.StatusFWR
+    return result
+}
+
+private def mqttSTATUS11(String value)
+{
+    def result []
+    def slurper = new JsonSlurper().setType(JsonParserType.INDEX_OVERLAY)
+    def parsedData = slurper.parseText(value)
+    if (parsedData?.StatusSTS?.UptimeSec > 0) {
+        result << deviceUpdate()
+    } else {
+        if (device.currentValue('status') != 'offline') {
+          result << createEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
+        }
+    }
+    return result
+}
+
 
 // Capability: Shade
 private def childClose(String value) {
@@ -443,43 +486,43 @@ private def findOrCreateChild(String type, String name) {
   }
 }
 
-private parseDescriptionAsMap(description) {
-  logger("trace", "parseDescriptionAsMap() - description: ${description.inspect()}")
-  try {
-    def descMap = description.split(",").inject([:]) { map, param ->
-      def nameAndValue = param.split(":")
-      if (nameAndValue.length == 2){
-        map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
-      } else {
-        map += [(nameAndValue[0].trim()):""]
-      }
-    }
-
-    def headers = new String(descMap["headers"]?.decodeBase64())
-    def status_code = headers?.tokenize('\r\n')[0]
-    headers = headers?.tokenize('\r\n')?.toList()[1..-1]?.collectEntries{
-      it.split(":",2).with{ [ (it[0]): (it.size()<2) ? null : it[1] ?: null ] }
-    }
-
-    def body = new String(descMap["body"]?.decodeBase64())
-    def body_json
-    logger("trace", "parseDescriptionAsMap() - headers: ${headers.inspect()}, body: ${body.inspect()}")
-
-    if (body && body != "") {
-      if(body.startsWith("{") || body.startsWith("[")) {
-        def slurper = new JsonSlurper()
-        body_json = slurper.parseText(body)
-        logger("trace", "parseDescriptionAsMap() - body_json: ${body_json}")
-      }
-    }
-
-    return [desc: descMap.subMap(['mac','ip','port']), status_code: status_code, headers:headers, body:body_json]
-  } catch (e) {
-    logger("error", "parseDescriptionAsMap() - ${e.inspect()}")
-    return [:]
-  }
-}
-
+//private parseDescriptionAsMap(description) {
+//  logger("trace", "parseDescriptionAsMap() - description: ${description.inspect()}")
+//  try {
+//    def descMap = description.split(",").inject([:]) { map, param ->
+//      def nameAndValue = param.split(":")
+//      if (nameAndValue.length == 2){
+//        map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
+//      } else {
+//        map += [(nameAndValue[0].trim()):""]
+//      }
+//    }
+//
+//    def headers = new String(descMap["headers"]?.decodeBase64())
+//    def status_code = headers?.tokenize('\r\n')[0]
+//    headers = headers?.tokenize('\r\n')?.toList()[1..-1]?.collectEntries{
+//      it.split(":",2).with{ [ (it[0]): (it.size()<2) ? null : it[1] ?: null ] }
+//    }
+//
+//    def body = new String(descMap["body"]?.decodeBase64())
+//    def body_json
+//    logger("trace", "parseDescriptionAsMap() - headers: ${headers.inspect()}, body: ${body.inspect()}")
+//
+//    if (body && body != "") {
+//      if(body.startsWith("{") || body.startsWith("[")) {
+//        def slurper = new JsonSlurper()
+//        body_json = slurper.parseText(body)
+//        logger("trace", "parseDescriptionAsMap() - body_json: ${body_json}")
+//      }
+//    }
+//
+//    return [desc: descMap.subMap(['mac','ip','port']), status_code: status_code, headers:headers, body:body_json]
+//  } catch (e) {
+//    logger("error", "parseDescriptionAsMap() - ${e.inspect()}")
+//    return [:]
+//  }
+//}
+//
 // Synchronous call
 //private getActionNow(uri) {
 //  logger("debug", "getActionNow() - uri: ${uri.inspect()}")
