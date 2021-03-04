@@ -63,7 +63,6 @@ def installed()
     }
 
     state.devicePings = 0
-    state.mqttConnected = false;
 
     initialize()
 }
@@ -155,7 +154,6 @@ def clearState()
     }
 
     state.devicePings = 0
-    state.mqttConnected = false
 }
 
 def checkState()
@@ -180,13 +178,11 @@ def mqttClientStatus(String message)
 
     // Connection succeeded - subscribe to topics
     if (message == "Status: Connection succeeded") {
-        state.mqttConnected = true
         mqttSubscribe()
     } else {
         status = message.take(6)
         if (status == "Error:") {
             mqttDisconnect()
-            state.mqttConnected = false
             runIn(5, "mqttConnect")
         } else {
             logger("info", "mqttClientStatus() - status message ${message}")
@@ -245,23 +241,29 @@ def getDeviceInfo()
 
 private def mqttConnect()
 {
-  try {
-      interfaces.mqtt.connect(MQTTBroker, "HubitatSonoffRFBridge", settings?.username, settings?.password)
-  } catch (e) {
-      logger("error", "mqttConnect error ${e.message}")
-  }
+    try {
+        interfaces.mqtt.connect(MQTTBroker, "HubitatSonoffRFBridge", settings?.username, settings?.password)
+    } catch (e) {
+        logger("error", "mqttConnect error ${e.message}")
+    }
 }
 
 private def mqttSubscribe()
 {
-  try {
-      if (interfaces.mqtt.isConnected()) {
-          interfaces.mqtt.subscribe("tele/${tasmotaDeviceName}/#")
-          interfaces.mqtt.subscribe("stat/${tasmotaDeviceName}/#")
-      }
-  } catch (e) {
-      logger("error", "mqttSubscribe error ${e.message}")
-  }
+    logger("debug", "mqttSubscribe()")
+    try {
+        if (interfaces.mqtt.isConnected()) {
+            logger("debug", "mqttSubscribe() - subscribing to topics")
+            interfaces.mqtt.subscribe("tele/${tasmotaDeviceName}/#")
+            interfaces.mqtt.subscribe("stat/${tasmotaDeviceName}/#")
+            getDeviceInfo()
+        } else {
+                logger("debug", "mqttSubscribe() - not connected. Rescheduling")
+                runIn(1, "mqttSubscribe")
+        }
+    } catch (e) {
+        logger("error", "mqttSubscribe error ${e.message}")
+    }
 }
 
 private def mqttDisconnect()
