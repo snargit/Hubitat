@@ -169,7 +169,7 @@ def checkState()
 
     state.devicePings = state.devicePings + 1
 
-    mqttPublish(mqttGetCommandTopic("Status"), 11)
+    mqttPublish(mqttGetCommandTopic("Status"), "11")
 }
 
 def mqttClientStatus(String message)
@@ -238,7 +238,7 @@ def deviceOnline()
 def getDeviceInfo()
 {
     logger("debug", "getDeviceInfo()")
-    mqttPublish(mqttGetCommandTopic("Status"), 0)
+    mqttPublish(mqttGetCommandTopic("Status"), "0")
 }
 
 private def mqttConnect()
