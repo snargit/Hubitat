@@ -196,8 +196,14 @@ def checkState() {
 //  result
 //}
 
+def mqttClientStatus(String message)
+{
+    logger("trace", "mqttClientStatus() - message: ${message?.inspect()}")
+}
+
 def parse(String description)
 {
+    logger("trace", "parse() - description: ${description?.inspect()}")
     def result = []
     def parsedData = interfaces.mqtt.parseMessage(description)
     if (!parsedData?.isEmpty()) {
