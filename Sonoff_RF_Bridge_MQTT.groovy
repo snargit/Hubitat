@@ -64,6 +64,8 @@ def installed()
 
     state.devicePings = 0
     state.mqttConnected = false;
+
+    initialize()
 }
 
 def uninstalled()
@@ -512,7 +514,7 @@ private def findOrCreateChild(String type, String name) {
   }
 }
 
-private mqttPublish(topic, value)
+private mqttPublish(String topic, String value)
 {
     interfaces.mqtt.publish(topic, value)
 }
