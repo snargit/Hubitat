@@ -211,7 +211,7 @@ def parse(String description)
                 result << mqttSTATUS11(payload)
                 break
             default:
-                logger("info", "Unimplemented topic ${parsedData.topic}")
+                logger("info", "Unimplemented topic ${topic}")
         }
     }
     return result
