@@ -458,11 +458,11 @@ private def findOrCreateChild(String type, String name) {
     if (!cd) {
       switch (type) {
         case "Shade":
-          cd = addChildDevice("Sonoff RF Bridge - ${type} Child Device", "${thisId}-${type}-${name}", [name: "${type} ${name}", label: "${type} ${name}", isComponent: true])
+          cd = addChildDevice("Sonoff RF Bridge over MQTT - ${type} Child Device over MQTT", "${thisId}-${type}-${name}", [name: "${type} ${name}", label: "${type} ${name}", isComponent: true])
           cd.parse([[name:"windowShade", value:"closed"]])
         break
         case "Switch":
-          cd = addChildDevice("Sonoff RF Bridge - ${type} Child Device", "${thisId}-${type}-${name}", [name: "${type} ${name}", label: "${type} ${name}", isComponent: true])
+          cd = addChildDevice("Sonoff RF Bridge over MQTT - ${type} Child Device over MQTT", "${thisId}-${type}-${name}", [name: "${type} ${name}", label: "${type} ${name}", isComponent: true])
           cd.parse([[name:"switch", value:"off"]])
         break
         default :
