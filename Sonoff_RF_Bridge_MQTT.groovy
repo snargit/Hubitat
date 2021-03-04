@@ -61,6 +61,9 @@ def installed()
     if (state.deviceInfo == null) {
         state.deviceInfo = [:]
     }
+
+    state.devicePings = 0
+    state.mqttConnected = false;
 }
 
 def uninstalled()
