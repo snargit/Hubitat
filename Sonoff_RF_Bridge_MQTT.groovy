@@ -24,7 +24,7 @@ Note: the string must be defined as one single line (https://www.webtoolkitonlin
 @Field String VD_JSON = '{"Shade:Bedroom":{"close":"< B0 String that closes the Shade >","open":"< B0 String that opens the Shade >","stop":"< B0 String to stop the Shade >"},"Switch:Radio":{"on":"< B0 String turn on the Switch >","off":"< B0 String turn off the Switch >"}}'
 
 metadata {
-  definition (name: "Sonoff RF Bridge", namespace: "snargit", author: "David BAILEY", importUrl: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT.groovy") {
+  definition (name: "Sonoff RF Bridge over MQTT", namespace: "snargit", author: "David BAILEY", importUrl: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT.groovy") {
     capability "Actuator"
     capability "Refresh"
     capability "Initialize"
@@ -198,7 +198,7 @@ def checkState() {
 
 def parse(String description)
 {
-    def result []
+    def result = []
     def parsedData = interfaces.mqtt.parseMessage(description)
     if (!parsedData?.isEmpty()) {
         topic = parsedData.topic
@@ -237,7 +237,7 @@ def deviceUpdate() {
 
 def getDeviceInfo() {
   logger("debug", "getDeviceInfo()")
-  mqttPublish(mqttGetCommandTopic("Status"), 0))
+  mqttPublish(mqttGetCommandTopic("Status"), 0)
 }
 
 private def mqttRESULT(String value)
@@ -248,7 +248,7 @@ private def mqttRESULT(String value)
 
 private def mqttSTATUS2(String value)
 {
-    def result []
+    def result = []
     def slurper = new JsonSlurper().setType(JsonParserType.INDEX_OVERLAY)
     def parsedData = slurper.parseText(value)
     state.deviceInfo = parsedData?.StatusFWR
@@ -257,7 +257,7 @@ private def mqttSTATUS2(String value)
 
 private def mqttSTATUS11(String value)
 {
-    def result []
+    def result = []
     def slurper = new JsonSlurper().setType(JsonParserType.INDEX_OVERLAY)
     def parsedData = slurper.parseText(value)
     if (parsedData?.StatusSTS?.UptimeSec > 0) {
