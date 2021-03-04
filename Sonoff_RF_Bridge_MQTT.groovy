@@ -273,112 +273,106 @@ private def mqttSTATUS11(String value)
 
 // Capability: Shade
 private def childClose(String value) {
-  logger("debug", "childClose(${value})")
+    logger("debug", "childClose(${value})")
 
-  try {
-    def slurper = new JsonSlurper()
-    def vd_data = slurper.parseText(VD_JSON)
+    try {
+        def slurper = new JsonSlurper()
+        def vd_data = slurper.parseText(VD_JSON)
 
-    def cd = getChildDevice(value)
-    if (cd) {
-        (vd_parent, vd_type, vd_name) = value?.split('-', 3)
-        if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
-            String cv = cd.currentValue("windowShade")
-            String rf_cmd = vd_data[vd_type +':'+ vd_name]?.close
-            if ( getActionNow(getCommand("Backlog", urlEscape("RfRaw ${rf_cmd}; RfRaw 0"))) ) {
-              logger("debug", "childClose(${value}) - Shade: ${cv} -> closed")
-              cd.parse([[name:"windowShade", value:"closed", descriptionText:"Was closed"]])
-              cd.parse([[name:"switch", value:"off", descriptionText:"Was opened"]])
-              if(logDescText) {
-                log.info "${cd.displayName} Was closed"
-              } else {
-                logger("info", "${cd.displayName} Was closed")
-              }
+        def cd = getChildDevice(value)
+        if (cd) {
+            (vd_parent, vd_type, vd_name) = value?.split('-', 3)
+            if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
+                String cv = cd.currentValue("windowShade")
+                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.close
+                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                logger("debug", "childClose(${value}) - Shade: ${cv} -> closed")
+                cd.parse([[name:"windowShade", value:"closed", descriptionText:"Was closed"]])
+                cd.parse([[name:"switch", value:"off", descriptionText:"Was opened"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was closed"
+                } else {
+                    logger("info", "${cd.displayName} Was closed")
+                }
+            } else {
+                logger("warn", "childClose(${value}) - Could not find the Virtual Device definition")
             }
-
         } else {
-          logger("warn", "childClose(${value}) - Could not find the Virtual Device definition")
+            logger("warn", "childClose(${value}) - Could not find the Virtual Device")
+            configure()
         }
-    } else {
-      logger("warn", "childClose(${value}) - Could not find the Virtual Device")
-      configure()
+    } catch (e) {
+        logger("error", "childClose(${value}) - ${e.inspect()}")
     }
-  } catch (e) {
-    logger("error", "childClose(${value}) - ${e.inspect()}")
-  }
 }
 
 // Capability: Shade
 private def childOpen(String value) {
-  logger("debug", "childOpen(${value})")
+    logger("debug", "childOpen(${value})")
 
-  try {
-    def slurper = new JsonSlurper()
-    def vd_data = slurper.parseText(VD_JSON)
+    try {
+        def slurper = new JsonSlurper()
+        def vd_data = slurper.parseText(VD_JSON)
 
-    def cd = getChildDevice(value)
-    if (cd) {
-        (vd_parent, vd_type, vd_name) = value?.split('-', 3)
-        if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
-            String cv = cd.currentValue("windowShade")
-            String rf_cmd = vd_data[vd_type +':'+ vd_name]?.open
-            if ( getActionNow(getCommand("Backlog", urlEscape("RfRaw ${rf_cmd}; RfRaw 0"))) ) {
-              logger("debug", "childOpen(${value}) - Shade: ${cv} -> open")
-              cd.parse([[name:"windowShade", value:"open", descriptionText:"Was opened"]])
-              cd.parse([[name:"switch", value:"on", descriptionText:"Was opened"]])
-              if(logDescText) {
-                log.info "${cd.displayName} Was opened"
-              } else {
-                logger("info", "${cd.displayName} Was opened")
-              }
+        def cd = getChildDevice(value)
+        if (cd) {
+            (vd_parent, vd_type, vd_name) = value?.split('-', 3)
+            if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
+                String cv = cd.currentValue("windowShade")
+                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.open
+                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                logger("debug", "childOpen(${value}) - Shade: ${cv} -> open")
+                cd.parse([[name:"windowShade", value:"open", descriptionText:"Was opened"]])
+                cd.parse([[name:"switch", value:"on", descriptionText:"Was opened"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was opened"
+                } else {
+                    logger("info", "${cd.displayName} Was opened")
+                }
+            } else {
+                logger("warn", "childOpen(${value}) - Could not find the Virtual Device definition")
             }
-
         } else {
-          logger("warn", "childOpen(${value}) - Could not find the Virtual Device definition")
+            logger("warn", "childOpen(${value}) - Could not find the Virtual Device")
+            configure()
         }
-    } else {
-      logger("warn", "childOpen(${value}) - Could not find the Virtual Device")
-      configure()
+    } catch (e) {
+        logger("error", "childOpen(${value}) - ${e.inspect()}")
     }
-  } catch (e) {
-    logger("error", "childOpen(${value}) - ${e.inspect()}")
-  }
 }
 
 // Capability: Shade
 private def childStop(String value) {
-  logger("debug", "childStop(${value})")
+    logger("debug", "childStop(${value})")
 
-  try {
-    def slurper = new JsonSlurper()
-    def vd_data = slurper.parseText(VD_JSON)
+    try {
+        def slurper = new JsonSlurper()
+        def vd_data = slurper.parseText(VD_JSON)
 
-    def cd = getChildDevice(value)
-    if (cd) {
-        (vd_parent, vd_type, vd_name) = value?.split('-', 3)
-        if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
-            String cv = cd.currentValue("windowShade")
-            String rf_cmd = vd_data[vd_type +':'+ vd_name]?.stop
-            if ( getActionNow(getCommand("Backlog", urlEscape("RfRaw ${rf_cmd}; RfRaw 0"))) ) {
-              logger("debug", "childStop(${value}) - Shade: ${cv} -> partially open")
-              cd.parse([[name:"windowShade", value:"partially open", descriptionText:"Was stopped"]])
-              if(logDescText) {
-                log.info "${cd.displayName} Was stopped"
-              } else {
-                logger("info", "${cd.displayName} Was stopped")
-              }
+        def cd = getChildDevice(value)
+        if (cd) {
+            (vd_parent, vd_type, vd_name) = value?.split('-', 3)
+            if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
+                String cv = cd.currentValue("windowShade")
+                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.stop
+                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                logger("debug", "childStop(${value}) - Shade: ${cv} -> partially open")
+                cd.parse([[name:"windowShade", value:"partially open", descriptionText:"Was stopped"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was stopped"
+                } else {
+                    logger("info", "${cd.displayName} Was stopped")
+                }
+            } else {
+                logger("warn", "childStop(${value}) - Could not find the Virtual Device definition")
             }
-
         } else {
-          logger("warn", "childStop(${value}) - Could not find the Virtual Device definition")
+            logger("warn", "childStop(${value}) - Could not find the Virtual Device")
+            configure()
         }
-    } else {
-      logger("warn", "childStop(${value}) - Could not find the Virtual Device")
-      configure()
+    } catch (e) {
+        logger("error", "childStop(${value}) - ${e.inspect()}")
     }
-  } catch (e) {
-    logger("error", "childStop(${value}) - ${e.inspect()}")
-  }
 }
 
 // Capability: Shade
@@ -389,74 +383,71 @@ private def childPosition(String value, BigDecimal position) {
 
 // Capability: Switch
 private def childOn(String value) {
-  logger("debug", "childOn(${value})")
+    logger("debug", "childOn(${value})")
 
-  try {
-    def slurper = new JsonSlurper()
-    def vd_data = slurper.parseText(VD_JSON)
+    try {
+        def slurper = new JsonSlurper()
+        def vd_data = slurper.parseText(VD_JSON)
 
-    def cd = getChildDevice(value)
-    if (cd) {
-        (vd_parent, vd_type, vd_name) = value?.split('-', 3)
-        if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
-            String cv = cd.currentValue("switch")
-            String rf_cmd = vd_data[vd_type +':'+ vd_name]?.off
-            if ( getActionNow(getCommand("Backlog", urlEscape("RfRaw ${rf_cmd}; RfRaw 0"))) ) {
-              logger("debug", "childOn(${value}) - switch: ${cv} -> off")
-              cd.parse([[name:"switch", value:"off", descriptionText:"Was turned off"]])
-              if(logDescText) {
-                log.info "${cd.displayName} Was turned off"
-              } else {
-                logger("info", "${cd.displayName} Was turned off")
-              }
+        def cd = getChildDevice(value)
+        if (cd) {
+            (vd_parent, vd_type, vd_name) = value?.split('-', 3)
+            if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
+                String cv = cd.currentValue("switch")
+                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.off
+                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                logger("debug", "childOn(${value}) - switch: ${cv} -> off")
+                cd.parse([[name:"switch", value:"off", descriptionText:"Was turned off"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was turned off"
+                } else {
+                    logger("info", "${cd.displayName} Was turned off")
+                }
+
+            } else {
+                logger("warn", "childOn(${value}) - Could not find the Virtual Device definition")
             }
-
         } else {
-          logger("warn", "childOn(${value}) - Could not find the Virtual Device definition")
+            logger("warn", "childOn(${value}) - Could not find the Virtual Device")
+            configure()
         }
-    } else {
-      logger("warn", "childOn(${value}) - Could not find the Virtual Device")
-      configure()
+    } catch (e) {
+        logger("error", "childOn(${value}) - ${e.inspect()}")
     }
-  } catch (e) {
-    logger("error", "childOn(${value}) - ${e.inspect()}")
-  }
 }
 
 // Capability: Switch
 private def childOff(String value) {
-  logger("debug", "childOff(${value})")
+    logger("debug", "childOff(${value})")
 
-  try {
-    def slurper = new JsonSlurper()
-    def vd_data = slurper.parseText(VD_JSON)
+    try {
+        def slurper = new JsonSlurper()
+        def vd_data = slurper.parseText(VD_JSON)
 
-    def cd = getChildDevice(value)
-    if (cd) {
-        (vd_parent, vd_type, vd_name) = value?.split('-', 3)
-        if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
-            String cv = cd.currentValue("switch")
-            String rf_cmd = vd_data[vd_type +':'+ vd_name]?.on
-            if ( getActionNow(getCommand("Backlog", urlEscape("RfRaw ${rf_cmd}; RfRaw 0"))) ) {
-              logger("debug", "childOff(${value}) - switch: ${cv} -> on")
-              cd.parse([[name:"switch", value:"on", descriptionText:"Was turned on"]])
-              if(logDescText) {
-                log.info "${cd.displayName} Was turned on"
-              } else {
-                logger("info", "${cd.displayName} Was turned on")
-              }
+        def cd = getChildDevice(value)
+        if (cd) {
+            (vd_parent, vd_type, vd_name) = value?.split('-', 3)
+            if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
+                String cv = cd.currentValue("switch")
+                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.on
+                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                logger("debug", "childOff(${value}) - switch: ${cv} -> on")
+                cd.parse([[name:"switch", value:"on", descriptionText:"Was turned on"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was turned on"
+                } else {
+                    logger("info", "${cd.displayName} Was turned on")
+                }
+            } else {
+                logger("warn", "childOff(${value}) - Could not find the Virtual Device definition")
             }
-
         } else {
-          logger("warn", "childOff(${value}) - Could not find the Virtual Device definition")
+            logger("warn", "childOff(${value}) - Could not find the Virtual Device")
+            configure()
         }
-    } else {
-      logger("warn", "childOff(${value}) - Could not find the Virtual Device")
-      configure()
+    } catch (e) {
+        logger("error", "childOff(${value}) - ${e.inspect()}")
     }
-  } catch (e) {
-    logger("error", "childOff(${value}) - ${e.inspect()}")
-  }
 }
 
 // Finds / Creates the child device
