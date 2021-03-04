@@ -261,10 +261,14 @@ private def mqttSubscribe()
 
 private def mqttDisconnect()
 {
-    if (interfaces.mqtt.isConnected()) {
-        interfaces.mqtt.unsubscribe("tele/${tasmotaDeviceName}")
-        interfaces.mqtt.unsubscribe("stat/${tasmotaDeviceName}")
-        interfaces.mqtt.disconnect()
+    try {
+        if (interfaces.mqtt.isConnected()) {
+            interfaces.mqtt.unsubscribe("tele/${tasmotaDeviceName}")
+            interfaces.mqtt.unsubscribe("stat/${tasmotaDeviceName}")
+            interfaces.mqtt.disconnect()
+        }
+    } catch (e) {
+        logger("error", "mqttDisconnect error ${e.message}")
     }
 }
 
