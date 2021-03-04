@@ -50,184 +50,175 @@ metadata {
   }
 }
 
-def installed() {
-  logger("debug", "installed(${VERSION})")
+def installed()
+{
+    logger("debug", "installed(${VERSION})")
 
-  if (state.driverInfo == null || state.driverInfo.isEmpty() || state.driverInfo.ver != VERSION) {
-    state.driverInfo = [ver:VERSION, status:'Current version']
-  }
+    if (state.driverInfo == null || state.driverInfo.isEmpty() || state.driverInfo.ver != VERSION) {
+        state.driverInfo = [ver:VERSION, status:'Current version']
+    }
 
-  if (state.deviceInfo == null) {
-    state.deviceInfo = [:]
-  }
-
-  initialize()
-}
-
-def uninstalled() {
-    if (interfaces.mqtt.isConnected()) {
-        interfaces.mqtt.unsubscribe("tele/${tasmotaDeviceName}")
-        interfaces.mqtt.unsubscribe("stat/${tasmotaDeviceName}")
-        interfaces.mqtt.disconnect()
+    if (state.deviceInfo == null) {
+        state.deviceInfo = [:]
     }
 }
 
-def initialize() {
-  logger("debug", "initialize()")
-  sendEvent(name: "status", value: "unknown", descriptionText: "Is unknown", displayed: true)
-
-  def slurper = new JsonSlurper()
-  def vd_data = slurper.parseText(VD_JSON)
-
-  // Create virtual devices
-  vd_data?.each {
-    logger("info", "configure() - Creating Virtual Device: ${it.key?.split(':')?.getAt(1)} (${it.key?.split(':')?.getAt(0)})")
-    def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1))
-  }
-  try {
-      interfaces.mqtt.connect(mqttbroker, "HubitatSonoffRFBridge", settings?.username,settings?.password)
-      pauseExecution(1000)
-      if (interfaces.mqtt.isConnected()) {
-          interfaces.mqtt.subscribe("tele/${tasmotaDeviceName}/#")
-          interfaces.mqtt.subscribe("stat/${tasmotaDeviceName}/#")
-      }
-  } catch (e) {
-      logger("error", "Initialize error ${e.message}")
-  }
+def uninstalled()
+{
+    mqttDisconnect()
 }
 
-def updated() {
-  logger("debug", "updated()")
+def updated()
+{
+    logger("debug", "updated()")
 
-  if (!state.driverInfo?.ver || state.driverInfo.isEmpty() || state.driverInfo.ver != VERSION) {
-    installed()
-  }
+    if (!state.driverInfo?.ver || state.driverInfo.isEmpty() || state.driverInfo.ver != VERSION) {
+        installed()
+    }
 
-  if (!state.deviceInfo) {
-    refresh()
-  }
+    if (!state.deviceInfo) {
+        refresh()
+    }
 
-  unschedule()
-  configure()
+    unschedule()
+    mqttDisconnect()
+    configure()
 }
 
-def refresh() {
-  logger("debug", "refresh() - state: ${state.inspect()}")
-  getDeviceInfo()
+def initialize()
+{
+    logger("debug", "initialize()")
+    sendEvent(name: "status", value: "unknown", descriptionText: "Is unknown", displayed: true)
+
+    def slurper = new JsonSlurper()
+    def vd_data = slurper.parseText(VD_JSON)
+
+    // Create virtual devices
+    vd_data?.each {
+        logger("info", "configure() - Creating Virtual Device: ${it.key?.split(':')?.getAt(1)} (${it.key?.split(':')?.getAt(0)})")
+        def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1))
+    }
+}
+
+def refresh()
+{
+    logger("debug", "refresh() - state: ${state.inspect()}")
+    getDeviceInfo()
 }
 
 def configure() {
-  logger("debug", "configure()")
+    logger("debug", "configure()")
 
-  state.devicePings = 0
+    state.devicePings = 0
 
-  schedule("0 0 12 */7 * ?", updateCheck)
+    mqttConnect()
 
-  if (stateCheckInterval.toInteger()) {
-    if (['5', '10', '15', '30'].contains(stateCheckInterval) ) {
-      schedule("0 */${stateCheckInterval} * ? * *", checkState)
+    schedule("0 0 12 */7 * ?", updateCheck)
+
+    if (stateCheckInterval.toInteger()) {
+        if (['5', '10', '15', '30'].contains(stateCheckInterval) ) {
+            schedule("0 */${stateCheckInterval} * ? * *", checkState)
+        } else {
+            schedule("0 0 */${stateCheckInterval} ? * *", checkState)
+        }
+    }
+}
+
+def cleanChild()
+{
+    logger("debug", "cleanChild() - childDevices: ${childDevices?.size()}")
+
+    childDevices?.each{ deleteChildDevice(it.deviceNetworkId) }
+}
+
+def clearState()
+{
+    logger("debug", "ClearStates() - Clearing device states")
+
+    state.clear()
+
+    if (state?.driverInfo == null) {
+        state.driverInfo = [:]
     } else {
-      schedule("0 0 */${stateCheckInterval} ? * *", checkState)
+        state.driverInfo.clear()
     }
-  }
-}
 
-def cleanChild() {
-  logger("debug", "cleanChild() - childDevices: ${childDevices?.size()}")
-  childDevices?.each{ deleteChildDevice(it.deviceNetworkId) }
-}
-
-def clearState() {
-  logger("debug", "ClearStates() - Clearing device states")
-
-  state.clear()
-
-  if (state?.driverInfo == null) {
-    state.driverInfo = [:]
-  } else {
-    state.driverInfo.clear()
-  }
-
-  if (state?.deviceInfo == null) {
-    state.deviceInfo = [:]
-  } else {
-    state.deviceInfo.clear()
-  }
-}
-
-def checkState() {
-  logger("debug", "checkState()")
-
-  if (state?.devicePings >= 4) {
-    if (device.currentValue('status') != 'offline') {
-      sendEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
+    if (state?.deviceInfo == null) {
+        state.deviceInfo = [:]
+    } else {
+        state.deviceInfo.clear()
     }
-    logger("warn", "Device is offline")
-  }
 
-  state.devicePings = state.devicePings + 1
-
-  mqttPublish(mqttGetCommandTopic("Status"), 11)
+    state.devicePings = 0
+    state.mqttConnected = false
 }
 
-//def parse(String description) {
-//  logger("trace", "parse() - description: ${description?.inspect()}")
-//  def result = []
-//
-//  def descMap = parseDescriptionAsMap(description)
-//
-//  if (!descMap?.isEmpty()) {
-//    if (descMap["body"]?.containsKey("StatusSTS")) {
-//      if (descMap["body"].StatusSTS?.UptimeSec > 0) {
-//        deviceUpdate()
-//      } else {
-//        if (device.currentValue('status') != 'offline') {
-//          result << createEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
-//        }
-//      }
-//    }
-//
-//    if (descMap["body"]?.containsKey("StatusFWR")) {
-//      state.deviceInfo = descMap["body"].StatusFWR
-//    }
-//  }
-//
-//  logger("debug", "parse() - descMap: ${descMap?.inspect()} with result: ${result?.inspect()}")
-//  result
-//}
+def checkState()
+{
+    logger("debug", "checkState()")
+
+    if (state?.devicePings >= 4) {
+        if (device.currentValue('status') != 'offline') {
+            sendEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
+        }
+        logger("warn", "Device is offline")
+    }
+
+    state.devicePings = state.devicePings + 1
+
+    mqttPublish(mqttGetCommandTopic("Status"), 11)
+}
 
 def mqttClientStatus(String message)
 {
     logger("trace", "mqttClientStatus() - message: ${message?.inspect()}")
+
+    // Connection succeeded - subscribe to topics
+    if (message == "Status: Connection succeeded") {
+        state.mqttConnected = true
+        mqttSubscribe()
+    } else {
+        status = message.take(6)
+        if (status == "Error:") {
+            mqttDisconnect()
+            state.mqttConnected = false
+            runIn(5, "mqttConnect")
+        } else {
+            logger("info", "mqttClientStatus() - status message ${message}")
+        }
+    }
 }
 
 def parse(String description)
 {
-    logger("trace", "parse() - description: ${description?.inspect()}")
     def result = []
     def parsedData = interfaces.mqtt.parseMessage(description)
     if (!parsedData?.isEmpty()) {
-        topic = parsedData.topic
+        logger("trace", "parse() - topic: ${parsedData.topic}")
+        logger("trace", "parse() - payload: ${parsedData.payload}")
+        def topic = new String(parsedData.topic)
         topic = topic.substring(topic.lastIndexOf("/")+1)
+        def payload = new String(parsedData.payload)
         switch (topic)
         {
             case "RESULT":
-                mqttRESULT(topic.payload)
+                mqttRESULT(payload)
                 break
             case "STATUS2":
-                mqttSTATUS2(topic.payload)
+                mqttSTATUS2(payload)
                 break
             case "STATUS11":
-                result << mqttSTATUS11(topic.payload)
+                result << mqttSTATUS11(payload)
                 break
             default:
-                logger("info", payload)
+                logger("info", "Unimplemented topic ${parsedData.topic}")
         }
     }
     return result
 }
 
-def deviceUpdate() {
+def deviceOnline()
+{
   // Sets the device status to online, but only if previously was offline
   Map deviceState = [ name: "status",
                       value: 'online',
@@ -241,9 +232,40 @@ def deviceUpdate() {
   return createEvent(deviceState)
 }
 
-def getDeviceInfo() {
-  logger("debug", "getDeviceInfo()")
-  mqttPublish(mqttGetCommandTopic("Status"), 0)
+def getDeviceInfo()
+{
+    logger("debug", "getDeviceInfo()")
+    mqttPublish(mqttGetCommandTopic("Status"), 0)
+}
+
+private def mqttConnect()
+{
+  try {
+      interfaces.mqtt.connect(MQTTBroker, "HubitatSonoffRFBridge", settings?.username, settings?.password)
+  } catch (e) {
+      logger("error", "mqttConnect error ${e.message}")
+  }
+}
+
+private def mqttSubscribe()
+{
+  try {
+      if (interfaces.mqtt.isConnected()) {
+          interfaces.mqtt.subscribe("tele/${tasmotaDeviceName}/#")
+          interfaces.mqtt.subscribe("stat/${tasmotaDeviceName}/#")
+      }
+  } catch (e) {
+      logger("error", "mqttSubscribe error ${e.message}")
+  }
+}
+
+private def mqttDisconnect()
+{
+    if (interfaces.mqtt.isConnected()) {
+        interfaces.mqtt.unsubscribe("tele/${tasmotaDeviceName}")
+        interfaces.mqtt.unsubscribe("stat/${tasmotaDeviceName}")
+        interfaces.mqtt.disconnect()
+    }
 }
 
 private def mqttRESULT(String value)
@@ -255,7 +277,7 @@ private def mqttRESULT(String value)
 private def mqttSTATUS2(String value)
 {
     def result = []
-    def slurper = new JsonSlurper().setType(JsonParserType.INDEX_OVERLAY)
+    def slurper = new JsonSlurper()
     def parsedData = slurper.parseText(value)
     state.deviceInfo = parsedData?.StatusFWR
     return result
@@ -264,21 +286,21 @@ private def mqttSTATUS2(String value)
 private def mqttSTATUS11(String value)
 {
     def result = []
-    def slurper = new JsonSlurper().setType(JsonParserType.INDEX_OVERLAY)
+    def slurper = new JsonSlurper()
     def parsedData = slurper.parseText(value)
     if (parsedData?.StatusSTS?.UptimeSec > 0) {
-        result << deviceUpdate()
+        result << deviceOnline()
     } else {
         if (device.currentValue('status') != 'offline') {
-          result << createEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
+            result << createEvent([ name: "status", value: 'offline', descriptionText: "Is offline", displayed: true])
         }
     }
     return result
 }
 
-
 // Capability: Shade
-private def childClose(String value) {
+private def childClose(String value)
+{
     logger("debug", "childClose(${value})")
 
     try {
@@ -313,7 +335,8 @@ private def childClose(String value) {
 }
 
 // Capability: Shade
-private def childOpen(String value) {
+private def childOpen(String value)
+{
     logger("debug", "childOpen(${value})")
 
     try {
@@ -382,10 +405,10 @@ private def childStop(String value) {
 }
 
 // Capability: Shade
-private def childPosition(String value, BigDecimal position) {
-  logger("debug", "childPosition(${value},${position})")
+private def childPosition(String value, BigDecimal position)
+{
+    logger("debug", "childPosition(${value},${position})")
 }
-
 
 // Capability: Switch
 private def childOn(String value) {
@@ -482,62 +505,6 @@ private def findOrCreateChild(String type, String name) {
   }
 }
 
-//private parseDescriptionAsMap(description) {
-//  logger("trace", "parseDescriptionAsMap() - description: ${description.inspect()}")
-//  try {
-//    def descMap = description.split(",").inject([:]) { map, param ->
-//      def nameAndValue = param.split(":")
-//      if (nameAndValue.length == 2){
-//        map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
-//      } else {
-//        map += [(nameAndValue[0].trim()):""]
-//      }
-//    }
-//
-//    def headers = new String(descMap["headers"]?.decodeBase64())
-//    def status_code = headers?.tokenize('\r\n')[0]
-//    headers = headers?.tokenize('\r\n')?.toList()[1..-1]?.collectEntries{
-//      it.split(":",2).with{ [ (it[0]): (it.size()<2) ? null : it[1] ?: null ] }
-//    }
-//
-//    def body = new String(descMap["body"]?.decodeBase64())
-//    def body_json
-//    logger("trace", "parseDescriptionAsMap() - headers: ${headers.inspect()}, body: ${body.inspect()}")
-//
-//    if (body && body != "") {
-//      if(body.startsWith("{") || body.startsWith("[")) {
-//        def slurper = new JsonSlurper()
-//        body_json = slurper.parseText(body)
-//        logger("trace", "parseDescriptionAsMap() - body_json: ${body_json}")
-//      }
-//    }
-//
-//    return [desc: descMap.subMap(['mac','ip','port']), status_code: status_code, headers:headers, body:body_json]
-//  } catch (e) {
-//    logger("error", "parseDescriptionAsMap() - ${e.inspect()}")
-//    return [:]
-//  }
-//}
-//
-// Synchronous call
-//private getActionNow(uri) {
-//  logger("debug", "getActionNow() - uri: ${uri.inspect()}")
-//
-//  try {
-//    httpGet(["uri": "http://${deviceAddress}" + uri, "contentType": "application/json; charset=utf-8"]) { resp ->
-//      logger("debug", "getActionNow() - respStatus: ${resp.getStatus()}, respHeaders: ${resp.getAllHeaders()?.inspect()}, respData: ${resp.getData()}")
-//      if (resp.success && resp?.getData()?.isEmpty()) {
-//        return true
-//      } else {
-//        logger("error", "getActionNow() - respStatus: ${resp.getStatus()}, respHeaders: ${resp.getAllHeaders()?.inspect()}, respData: ${resp.getData()}")
-//        return false
-//      }
-//    }
-//  } catch (Exception e) {
-//    logger("error", "getActionNow() - e: ${e.inspect()}")
-//  }
-//}
-//
 private mqttPublish(topic, value)
 {
     interfaces.mqtt.publish(topic, value)
@@ -553,40 +520,42 @@ private mqttGetCommandTopic(command)
  * @param level Level to log at, see LOG_LEVELS for options
  * @param msg Message to log
  */
-private logger(level, msg) {
-  if (level && msg) {
-    Integer levelIdx = LOG_LEVELS.indexOf(level)
-    Integer setLevelIdx = LOG_LEVELS.indexOf(logLevel)
-    if (setLevelIdx < 0) {
-      setLevelIdx = LOG_LEVELS.indexOf(DEFAULT_LOG_LEVEL)
+private logger(level, msg)
+{
+    if (level && msg) {
+        Integer levelIdx = LOG_LEVELS.indexOf(level)
+        Integer setLevelIdx = LOG_LEVELS.indexOf(logLevel)
+        if (setLevelIdx < 0) {
+            setLevelIdx = LOG_LEVELS.indexOf(DEFAULT_LOG_LEVEL)
+        }
+        if (levelIdx <= setLevelIdx) {
+            log."${level}" "${device.displayName} ${msg}"
+        }
     }
-    if (levelIdx <= setLevelIdx) {
-      log."${level}" "${device.displayName} ${msg}"
-    }
-  }
 }
 
 def updateCheck() {
-  Map params = [uri: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT.groovy"]
-  asynchttpGet("updateCheckHandler", params)
+    Map params = [uri: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT.groovy"]
+    asynchttpGet("updateCheckHandler", params)
 }
 
 private updateCheckHandler(resp, data) {
-  if (resp?.getStatus() == 200) {
-    Integer ver_online = (resp?.getData() =~ /(?m).*String VERSION = "(\S*)".*/).with { hasGroup() ? it[0][1]?.replaceAll('[vV]', '')?.replaceAll('\\.', '').toInteger() : null }
-    if (ver_online == null) { logger("error", "updateCheck() - Unable to extract version from source file") }
+    if (resp?.getStatus() == 200) {
+        Integer ver_online = (resp?.getData() =~ /(?m).*String VERSION = "(\S*)".*/).with { hasGroup() ? it[0][1]?.replaceAll('[vV]', '')?.replaceAll('\\.', '').toInteger() : null }
+        if (ver_online == null) {
+            logger("error", "updateCheck() - Unable to extract version from source file")
+        }
 
-    Integer ver_cur = state.driverInfo?.ver?.replaceAll('[vV]', '')?.replaceAll('\\.', '').toInteger()
+        Integer ver_cur = state.driverInfo?.ver?.replaceAll('[vV]', '')?.replaceAll('\\.', '').toInteger()
 
-    if (ver_online > ver_cur) {
-      logger("info", "New version(${ver_online})")
-      state.driverInfo.status = "New version (${ver_online})"
-    } else if (ver_online == ver_cur) {
-      logger("info", "Current version")
-      state.driverInfo.status = 'Current version'
+        if (ver_online > ver_cur) {
+            logger("info", "New version(${ver_online})")
+            state.driverInfo.status = "New version (${ver_online})"
+        } else if (ver_online == ver_cur) {
+            logger("info", "Current version")
+            state.driverInfo.status = 'Current version'
+        }
+    } else {
+        logger("error", "updateCheck() - Unable to download source file")
     }
-
-  } else {
-    logger("error", "updateCheck() - Unable to download source file")
-  }
 }
