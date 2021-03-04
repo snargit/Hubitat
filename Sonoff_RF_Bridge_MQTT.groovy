@@ -519,7 +519,7 @@ private mqttPublish(topic, value)
 
 private mqttGetCommandTopic(command)
 {
-    String cmd = "cmnd/+${tasmotaDeviceName}/${command}"
+    String cmd = "cmnd/${tasmotaDeviceName}/${command}"
     return cmd
 }
 
