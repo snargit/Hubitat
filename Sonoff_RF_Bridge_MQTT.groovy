@@ -403,7 +403,6 @@ private def childOn(String value) {
                 } else {
                     logger("info", "${cd.displayName} Was turned off")
                 }
-
             } else {
                 logger("warn", "childOn(${value}) - Could not find the Virtual Device definition")
             }

@@ -6,7 +6,7 @@ import groovy.transform.Field
 @Field String DEFAULT_LOG_LEVEL = LOG_LEVELS[2]
 
 metadata {
-  definition (name: "Sonoff RF Bridge - Shade Child Device over MQTT", namespace: "snargit", author: "David BAILEY", importUrl: "") {
+  definition (name: "Sonoff RF Bridge - Shade Child Device over MQTT", namespace: "snargit", author: "David BAILEY", importUrl: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT_Shade_Child.groovy") {
     capability "Actuator"
     capability "WindowShade"
     command "stop"
