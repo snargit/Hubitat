@@ -102,6 +102,8 @@ def initialize()
         logger("info", "configure() - Creating Virtual Device: ${it.key?.split(':')?.getAt(1)} (${it.key?.split(':')?.getAt(0)})")
         def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1))
     }
+
+    configure()
 }
 
 def refresh()
