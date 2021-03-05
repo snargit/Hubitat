@@ -214,7 +214,7 @@ def parse(String description)
                 result << mqttSTATUS11(payload)
                 break
             default:
-                logger("info", "Unimplemented topic ${topic}")
+                logger("debug", "Unimplemented topic ${topic}")
         }
     }
     return result
@@ -231,6 +231,10 @@ def deviceOnline()
 
   state.devicePings = 0
   logger("info", "Device is online")
+
+  // Set into Portisch mode
+  logger("trace", "deviceOnline - set RF Bridge into Portisch mode")
+  mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw 1; RfRaw 0")
 
   return createEvent(deviceState)
 }
