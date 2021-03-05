@@ -323,8 +323,16 @@ private def childClose(String value)
             (vd_parent, vd_type, vd_name) = value?.split('-', 3)
             if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
                 String cv = cd.currentValue("windowShade")
-                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.close
-                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                if (vd_data[vd_type +':'+ vd_name]?.close in List) {
+                    def cmnd = new String("RfRaw ")
+                    cmnd += vd_data[vd_type +':'+ vd_name]?.close.join("; RfRaw ")
+                    cmnd += "; RfRaw 0"
+                    logger("trace", "close ${cmnd}")
+                    mqttPublish(mqttGetCommandTopic("Backlog"), cmnd)
+                } else {
+                    String rf_cmd = vd_data[vd_type +':'+ vd_name]?.close
+                    mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                }
                 logger("debug", "childClose(${value}) - Shade: ${cv} -> closed")
                 cd.parse([[name:"windowShade", value:"closed", descriptionText:"Was closed"]])
                 cd.parse([[name:"switch", value:"off", descriptionText:"Was opened"]])
@@ -359,8 +367,16 @@ private def childOpen(String value)
             (vd_parent, vd_type, vd_name) = value?.split('-', 3)
             if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
                 String cv = cd.currentValue("windowShade")
-                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.open
-                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                if (vd_data[vd_type +':'+ vd_name]?.open in List) {
+                    def cmnd = new String("RfRaw ")
+                    cmnd += vd_data[vd_type +':'+ vd_name]?.open.join("; RfRaw ")
+                    cmnd += "; RfRaw 0"
+                    logger("trace", "open ${cmnd}")
+                    mqttPublish(mqttGetCommandTopic("Backlog"), cmnd)
+                } else {
+                    String rf_cmd = vd_data[vd_type +':'+ vd_name]?.open
+                    mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                }
                 logger("debug", "childOpen(${value}) - Shade: ${cv} -> open")
                 cd.parse([[name:"windowShade", value:"open", descriptionText:"Was opened"]])
                 cd.parse([[name:"switch", value:"on", descriptionText:"Was opened"]])
@@ -394,8 +410,16 @@ private def childStop(String value) {
             (vd_parent, vd_type, vd_name) = value?.split('-', 3)
             if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
                 String cv = cd.currentValue("windowShade")
-                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.stop
-                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                if (vd_data[vd_type +':'+ vd_name]?.stop in List) {
+                    def cmnd = new String("RfRaw ")
+                    cmnd += vd_data[vd_type +':'+ vd_name]?.stop.join("; RfRaw ")
+                    cmnd += "; RfRaw 0"
+                    logger("trace", "stop ${cmnd}")
+                    mqttPublish(mqttGetCommandTopic("Backlog"), cmnd)
+                } else {
+                    String rf_cmd = vd_data[vd_type +':'+ vd_name]?.stop
+                    mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                }
                 logger("debug", "childStop(${value}) - Shade: ${cv} -> partially open")
                 cd.parse([[name:"windowShade", value:"partially open", descriptionText:"Was stopped"]])
                 if(logDescText) {
