@@ -319,7 +319,7 @@ private def mqttSTATUS11(String value)
 private def childClose(String value)
 {
     logger("debug", "childClose(${value})")
-
+    def result = []
     try {
         def slurper = new JsonSlurper()
         def vd_data = slurper.parseText(VD_JSON)
@@ -341,7 +341,7 @@ private def childClose(String value)
                 }
                 logger("debug", "childClose(${value}) - Shade: ${cv} -> closed")
                 cd.parse([[name:"windowShade", value:"closed", descriptionText:"Was closed"]])
-                cd.parse([[name:"switch", value:"off", descriptionText:"Was opened"]])
+                cd.parse([[name:"switch", value:"off", descriptionText:"Was closed"]])
                 if(logDescText) {
                     log.info "${cd.displayName} Was closed"
                 } else {
@@ -350,6 +350,11 @@ private def childClose(String value)
             } else {
                 logger("warn", "childClose(${value}) - Could not find the Virtual Device definition")
             }
+            def position = 100
+            def descriptionText = "${cd.displayName} was closed"
+            def positionEvent = createEvent(name: "position", value: position, descriptionText: descriptionText, displayed: false)
+            def stateEvent = createEvent(name: "windowShade", value: "open", descriptionText: descriptionText, isStateChange: true)
+            result = [stateEvent, positionEvent]
         } else {
             logger("warn", "childClose(${value}) - Could not find the Virtual Device")
             configure()
@@ -357,13 +362,14 @@ private def childClose(String value)
     } catch (e) {
         logger("error", "childClose(${value}) - ${e.inspect()}")
     }
+    result
 }
 
 // Capability: Shade
 private def childOpen(String value)
 {
     logger("debug", "childOpen(${value})")
-
+    def result = []
     try {
         def slurper = new JsonSlurper()
         def vd_data = slurper.parseText(VD_JSON)
@@ -391,6 +397,11 @@ private def childOpen(String value)
                 } else {
                     logger("info", "${cd.displayName} Was opened")
                 }
+                Integer position = 0
+                def descriptionText = "${cd.displayName} was opened"
+                def positionEvent = createEvent(name: "position", value: position, descriptionText: descriptionText, displayed: false)
+                def stateEvent = createEvent(name: "windowShade", value: "open", descriptionText: descriptionText, isStateChange: true)
+                result = [stateEvent, positionEvent]
             } else {
                 logger("warn", "childOpen(${value}) - Could not find the Virtual Device definition")
             }
@@ -401,6 +412,7 @@ private def childOpen(String value)
     } catch (e) {
         logger("error", "childOpen(${value}) - ${e.inspect()}")
     }
+    result
 }
 
 // Capability: Shade
@@ -449,6 +461,10 @@ private def childStop(String value) {
 private def childPosition(String value, BigDecimal position)
 {
     logger("debug", "childPosition(${value},${position})")
+    if (position < 50) {
+        return childOpen(value)
+    }
+    return childClose(value)
 }
 
 // Capability: Switch
