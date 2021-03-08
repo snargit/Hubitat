@@ -461,7 +461,7 @@ private def childStop(String value) {
 private def childPosition(String value, BigDecimal position)
 {
     logger("debug", "childPosition(${value},${position})")
-    if (position < 50) {
+    if (position > 50) {
         return childOpen(value)
     }
     return childClose(value)
