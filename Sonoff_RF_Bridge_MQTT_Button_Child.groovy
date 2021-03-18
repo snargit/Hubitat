@@ -7,7 +7,6 @@ import groovy.transform.Field
 
 metadata {
   definition (name: "Sonoff RF Bridge over MQTT - Button Child Device over MQTT", namespace: "snargit", author: "David BAILEY", importUrl: "https://raw.githubusercontent.com/snargit/Hubitat/main/Sonoff_RF_Bridge_MQTT_Button_Child.groovy") {
-    capability "Actuator"
     capability "PushableButton"
   }
   preferences {
@@ -61,7 +60,7 @@ def parse(value) {
 
 def push(buttonNumber) {
   logger("debug", "push()")
-  sendEvent(name: "pushed", value: "pushed", displayed: true)
+  sendEvent(name: "pushed", value: buttonNumber, isStateChange: true)
   parent.childPushed(device.deviceNetworkId, buttonNumber)
 }
 
