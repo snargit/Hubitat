@@ -18,6 +18,9 @@ Note: the string must be defined as one single line (https://www.webtoolkitonlin
   "Switch:Radio":{
     "on":"< B0 String turn on the Switch >",
     "off":"< B0 String turn off the Switch >"
+  },
+  "PushableButton:RemoteControl":{
+      "pushed":["< B0 String when button 1 pushed >", "< B0 String when button 2 pushed >", ..., "< B0 String when button n pushed >"]
   }
 }
 */
@@ -99,8 +102,8 @@ def initialize()
 
     // Create virtual devices
     vd_data?.each {
-        logger("info", "configure() - Creating Virtual Device: ${it.key?.split(':')?.getAt(1)} (${it.key?.split(':')?.getAt(0)})")
-        def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1))
+        logger("info", "initialize() - Creating Virtual Device: ${it.key?.split(':')?.getAt(1)} (${it.key?.split(':')?.getAt(0)})")
+        def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1), it.value?.pushed?.size())
     }
 
     configure()
@@ -535,8 +538,43 @@ private def childOff(String value) {
     }
 }
 
+// Capability: PushableButton
+private def childPushed(String value, Integer buttonNumber) {
+    logger("debug", "childPushed(${value}, ${buttonNumber})")
+
+    try {
+        def slurper = new JsonSlurper()
+        def vd_data = slurper.parseText(VD_JSON)
+
+        def cd = getChildDevice(value)
+        if (cd) {
+            (vd_parent, vd_type, vd_name) = value?.split('-', 3)
+            if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
+                String cv = cd.currentValue("pushed")
+                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.pushed
+                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                logger("debug", "childPushed(${value}) - button: ${cv} -> pushed")
+                cd.parse([[name:"button", value:"pushed", descriptionText:"Was pushed"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was pushed"
+                } else {
+                    logger("info", "${cd.displayName} Was pushed")
+                }
+            } else {
+                logger("warn", "childPushed(${value}) - Could not find the Virtual Device definition")
+            }
+        } else {
+            logger("warn", "childPushed(${value}) - Could not find the Virtual Device")
+            configure()
+        }
+    } catch (e) {
+        logger("error", "childPushed(${value}) - ${e.inspect()}")
+    }
+}
+
+
 // Finds / Creates the child device
-private def findOrCreateChild(String type, String name) {
+private def findOrCreateChild(String type, String name, Integer nButtons) {
   logger("debug", "findOrCreateChild(${type},${name})")
   try {
     String thisId = device.id
@@ -551,6 +589,9 @@ private def findOrCreateChild(String type, String name) {
           cd = addChildDevice("Sonoff RF Bridge over MQTT - ${type} Child Device over MQTT", "${thisId}-${type}-${name}", [name: "${type} ${name}", label: "${type} ${name}", isComponent: true])
           cd.parse([[name:"switch", value:"off"]])
         break
+        case "PushableButton":
+          cd = addChildDevice("Sonoff RF Bridge over MQTT - ${type} Child Device over MQTT", "${thisId}-${type}-${name}", [name: "${type} ${name}", label: "${type} ${name}", isComponent: true])
+          cd.parse([[name:"numberOfButtons", value:"${nButtons}"]])
         default :
           logger("error", "findOrCreateChild(${type},${name}) - Device type not found")
         break
