@@ -91,6 +91,14 @@ def setLevel(BigDecimal value) {
   setPosition(value)
 }
 
+def startPositionChange(direction) {
+  logger("debug", "startPositionChange(${direction})")
+}
+
+def stopPostionChange() {
+  logger("debug", "stopPositionChange()")
+}
+
 def stop() {
   logger("debug", "stop()")
   sendEvent(name: "windowShade", value: "partially open", displayed: true)

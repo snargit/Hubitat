@@ -237,7 +237,7 @@ def deviceOnline()
 
   // Set into Portisch mode
   logger("trace", "deviceOnline - set RF Bridge into Portisch mode")
-  mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw 1; RfRaw 0")
+  mqttPublish(mqttGetCommandTopic("RfRaw"), "1")
 
   return createEvent(deviceState)
 }
@@ -483,14 +483,22 @@ private def childOn(String value) {
             (vd_parent, vd_type, vd_name) = value?.split('-', 3)
             if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
                 String cv = cd.currentValue("switch")
-                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.off
-                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
-                logger("debug", "childOn(${value}) - switch: ${cv} -> off")
-                cd.parse([[name:"switch", value:"off", descriptionText:"Was turned off"]])
-                if(logDescText) {
-                    log.info "${cd.displayName} Was turned off"
+                if (vd_data[vd_type +':'+ vd_name]?.off in List) {
+                    def cmnd = new String("RfRaw ")
+                    cmnd += vd_data[vd_type +':'+ vd_name]?.on.join("; RfRaw ")
+                    cmnd += "; RfRaw 0"
+                    logger("trace", "On ${cmnd}")
+                    mqttPublish(mqttGetCommandTopic("Backlog"), cmnd)
                 } else {
-                    logger("info", "${cd.displayName} Was turned off")
+                    String rf_cmd = vd_data[vd_type +':'+ vd_name]?.on
+                    mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                }
+                logger("debug", "childOn(${value}) - switch: ${cv} -> on")
+                cd.parse([[name:"switch", value:"on", descriptionText:"Was turned on"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was turned on"
+                } else {
+                    logger("info", "${cd.displayName} Was turned on")
                 }
             } else {
                 logger("warn", "childOn(${value}) - Could not find the Virtual Device definition")
@@ -517,14 +525,22 @@ private def childOff(String value) {
             (vd_parent, vd_type, vd_name) = value?.split('-', 3)
             if (vd_data?.containsKey(vd_type +':'+ vd_name)) {
                 String cv = cd.currentValue("switch")
-                String rf_cmd = vd_data[vd_type +':'+ vd_name]?.on
-                mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
-                logger("debug", "childOff(${value}) - switch: ${cv} -> on")
-                cd.parse([[name:"switch", value:"on", descriptionText:"Was turned on"]])
-                if(logDescText) {
-                    log.info "${cd.displayName} Was turned on"
+                if (vd_data[vd_type +':'+ vd_name]?.off in List) {
+                    def cmnd = new String("RfRaw ")
+                    cmnd += vd_data[vd_type +':'+ vd_name]?.off.join("; RfRaw ")
+                    cmnd += "; RfRaw 0"
+                    logger("trace", "On ${cmnd}")
+                    mqttPublish(mqttGetCommandTopic("Backlog"), cmnd)
                 } else {
-                    logger("info", "${cd.displayName} Was turned on")
+                    String rf_cmd = vd_data[vd_type +':'+ vd_name]?.off
+                    mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
+                }
+                logger("debug", "childOff(${value}) - switch: ${cv} -> off")
+                cd.parse([[name:"switch", value:"off", descriptionText:"Was turned off"]])
+                if(logDescText) {
+                    log.info "${cd.displayName} Was turned off"
+                } else {
+                    logger("info", "${cd.displayName} Was turned off")
                 }
             } else {
                 logger("warn", "childOff(${value}) - Could not find the Virtual Device definition")
@@ -554,7 +570,7 @@ private def childPushed(String value, Integer buttonNumber) {
                 String rf_cmd = vd_data[vd_type +':'+ vd_name]?.pushed
                 mqttPublish(mqttGetCommandTopic("Backlog"), "RfRaw ${rf_cmd}; RfRaw 0")
                 logger("debug", "childPushed(${value}) - button: ${cv} -> pushed")
-                cd.parse([[name:"button", value:"pushed", descriptionText:"Was pushed"]])
+                cd.parse([[name:"pushed", value:"${buttonNumber}", descriptionText:"Was pushed"]])
                 if(logDescText) {
                     log.info "${cd.displayName} Was pushed"
                 } else {
