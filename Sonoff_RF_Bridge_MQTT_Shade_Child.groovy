@@ -93,10 +93,12 @@ def setLevel(BigDecimal value) {
 
 def startPositionChange(direction) {
   logger("debug", "startPositionChange(${direction})")
+  parent.childStartPositionChange(device.deviceNetworkId, direction)
 }
 
 def stopPostionChange() {
   logger("debug", "stopPositionChange()")
+  parent.childStopPositionChange(device.deviceNetworkId)
 }
 
 def stop() {

@@ -103,7 +103,8 @@ def initialize()
     // Create virtual devices
     vd_data?.each {
         logger("info", "initialize() - Creating Virtual Device: ${it.key?.split(':')?.getAt(1)} (${it.key?.split(':')?.getAt(0)})")
-        def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1), it.value?.pushed?.size())
+        def nButtons = it.value?.pushed?.size() ?: 0
+        def vd = findOrCreateChild(it.key?.split(':')?.getAt(0), it.key?.split(':')?.getAt(1), nButtons)
     }
 
     configure()
@@ -470,6 +471,18 @@ private def childPosition(String value, BigDecimal position)
     return childClose(value)
 }
 
+// Capability: Shade
+private def childStartPositionChange(String value, direction)
+{
+    logger("debug", "childStartPositionChange(${value},${direction})")
+}
+
+// Capability: Shade
+private def childStopPositionChange(String value)
+{
+    logger("debug", "childStopPositionChange(${value})")
+}
+
 // Capability: Switch
 private def childOn(String value) {
     logger("debug", "childOn(${value})")
@@ -529,7 +542,7 @@ private def childOff(String value) {
                     def cmnd = new String("RfRaw ")
                     cmnd += vd_data[vd_type +':'+ vd_name]?.off.join("; RfRaw ")
                     cmnd += "; RfRaw 0"
-                    logger("trace", "On ${cmnd}")
+                    logger("trace", "Off ${cmnd}")
                     mqttPublish(mqttGetCommandTopic("Backlog"), cmnd)
                 } else {
                     String rf_cmd = vd_data[vd_type +':'+ vd_name]?.off
