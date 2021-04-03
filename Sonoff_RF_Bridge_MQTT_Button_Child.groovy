@@ -10,10 +10,32 @@ metadata {
     capability "PushableButton"
   }
   preferences {
+    section {
+        for (Integer i = 0; i < numberOfButtons; i++) {
+            getNumberedParamInput(i, "Button")
+        }
+
+        attribute "nextButton", Integer
+
+        command "addButton"
+    }
     section { // General
       input name: "logLevel", title: "Log Level", type: "enum", options: LOG_LEVELS, defaultValue: DEFAULT_LOG_LEVEL, required: false
     }
   }
+}
+
+private getNumberedParamInput(Integer n, String name) {
+    input "${name}${n}", "text",
+        title: "${name}${n}:",
+        required: true,
+        defaultValue: "<RfRaw B0 String>"
+}
+
+def addButton()
+{
+    state.numberOfButtons += 1
+    getNumberedParamInput(state.numberOfButtons, "Button")
 }
 
 def installed() {
