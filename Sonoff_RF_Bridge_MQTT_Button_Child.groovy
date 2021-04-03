@@ -15,7 +15,7 @@ metadata {
             getNumberedParamInput(i, "Button")
         }
 
-        attribute "nextButton", Integer
+        attribute "nextButton", "number"
 
         command "addButton"
     }
@@ -47,6 +47,10 @@ def installed() {
 
   if (state.deviceInfo == null) {
     state.deviceInfo = [:]
+  }
+
+  if (state.numberOfButtons == null) {
+    state.numberOfButtons = 0
   }
 
   initialize()
