@@ -34,8 +34,8 @@ private getNumberedParamInput(Integer n, String name) {
 
 def addButton()
 {
-    state.numberOfButtons += 1
-    getNumberedParamInput(state.numberOfButtons, "Button")
+    getNumberedParamInput(nextButton, "Button")
+    device.updateSetting("numberOfButtons", state.numberOfButtons+1)
 }
 
 def installed() {
